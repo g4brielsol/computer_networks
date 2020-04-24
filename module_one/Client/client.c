@@ -1,3 +1,9 @@
+/*
+author = "Gabriel Sol da Silva"
+version = "0.1"
+maintainer = "Gabriel Sol da Silva"
+status = "Producao"
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,15 +24,19 @@ void error(const char *message)
 
 int main(int total_parameters, char *parameters[])
 {
+    // quantidade de caracteres
+    int caracters = 4095;
+    // inicializacao das variaveis
     int socket_file_description, port_number, communication;
-    char buffer[16];
+    char buffer[caracters];
+    // struct que descreve sockets de endereco da internet
     struct sockaddr_in server_address;
     // struct para armazenar informacoes do host
     struct hostent *server;
     // erro se digitar a porta errada
     if (total_parameters < 3)
     {
-        fprintf(stderr, "usou %s como porta\n", parameters[0]);
+        fprintf(stderr, "Usou %s como porta\n", parameters[0]);
         exit(1);
     }
     // numero da porta
@@ -44,43 +54,59 @@ int main(int total_parameters, char *parameters[])
     {
         fprintf(stderr, "Erro, host nao existe");
     }
-
+    // Limpa o endereco do server
     bzero((char *)&server_address, sizeof(server_address));
+    // protocolo TCP/IP
     server_address.sin_family = AF_INET;
     // copia os bytes da struct hostent para o server address da lista
     bcopy((char *)server->h_addr_list[0], (char *)&server_address.sin_addr.s_addr, server->h_length);
-    // host para a network
+    // htons retorna o valor da ordem do byte da TCP/IP
     server_address.sin_port = htons(port_number);
     // mensagem de erro para a conexao
     if (connect(socket_file_description, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {
         error("Conexao Falhou");
     }
-
+    // loop para o chat
     while (1)
     {
-        bzero(buffer, 16);
-        fgets(buffer, 16, stdin);
+        // limpa o buffer
+        bzero(buffer, 4095);
+        // pega o que foi escrito pelo cliente
+        fgets(buffer, caracters, stdin);
+        // escrita do cliente
         communication = write(socket_file_description, buffer, strlen(buffer));
         if (communication < 0)
         {
             error("Erro na Escrita");
         }
-        bzero(buffer, 16);
-        communication = read(socket_file_description, buffer, 16);
+        // ao digitar /quit fecha o loop do while, a funcao foi repetida e nao
+        // generalizada porque o "break" so pode ser utilizado em loops
+        int quit = strncmp("/quit", buffer, 5);
+        if (quit == 0)
+        {
+            break;
+        }
+        // limpar o buffer
+        bzero(buffer, caracters);
+        // leitura do que foi escrito pelo server
+        communication = read(socket_file_description, buffer, caracters);
+        // mensagem de erro
         if (communication < 0)
         {
             error("Erro na Leitura");
         }
+        // printa o que foi escrito pelo Server
         printf("Server: %s", buffer);
-
-        int quit = strncmp("quit", buffer, 4);
+        // ao digitar /quit fecha o loop do while, a funcao foi repetida e nao
+        // generalizada porque o "break" so pode ser utilizado em loops
+        quit = strncmp("/quit", buffer, 5);
         if (quit == 0)
         {
             break;
         }
     }
-
+    // fecha o socket
     close(socket_file_description);
     return 0;
 }
